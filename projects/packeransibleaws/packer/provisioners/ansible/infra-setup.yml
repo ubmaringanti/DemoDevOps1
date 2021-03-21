@@ -1,0 +1,99 @@
+---
+- name: Tomcat deployment playbook
+  hosts: 'all'
+  become: yes
+  become_method: sudo
+  tasks:
+    # - name: Update all packages
+    #   yum:
+    #     name: "*"
+    #     state: latest
+
+    # - name: Install Java
+    #   yum:
+    #     name: java-1.8.0-openjdk
+    #     state: present
+
+    - name: Add tomcat group
+      group:
+        name: tomcat
+
+    - name: Add "tomcat" user
+      user:
+        name: tomcat
+        group: tomcat
+        home: /usr/share/tomcat
+        createhome: no
+        system: yes
+
+    - name: Download Tomcat
+      get_url:
+        url: https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.41/bin/apache-tomcat-8.5.41.tar.gz
+        dest: /tmp/apache-tomcat-8.5.41.tar.gz
+
+    - name: Create a tomcat directory
+      file:
+        path: /usr/share/tomcat
+        state: directory
+
+    - name: Extract tomcat archive
+      unarchive:
+        src: /tmp/apache-tomcat-8.5.41.tar.gz
+        dest: /usr/share/tomcat
+        remote_src: yes
+        extra_opts: "--strip-components=1"
+        creates: /usr/share/tomcat/bin
+
+    - name: ownership of dirs
+      command: chgrp -R tomcat /usr/share/tomcat
+      become_user: root
+
+    - name: ownership
+      command: chmod -R g+r /usr/share/tomcat/conf
+      become_user: root
+
+    - name: ownership
+      command: chmod g+x /usr/share/tomcat/conf
+      become_user: root
+
+    - name: ownership
+      command: chown -R tomcat /usr/share/tomcat/webapps/ /usr/share/tomcat/work/ /usr/share/tomcat/temp/ /usr/share/tomcat/logs/
+
+
+    - name: Copy tomcat service file
+      template:
+        src: tomcat.service
+        dest: /etc/systemd/system/tomcat.service
+
+    - name: Start and enable tomcat
+      service:
+        daemon_reload: yes
+        name: tomcat
+        state: started
+        enabled: yes
+
+    # - name: Start and enable firewalld
+    #   service:
+    #     name: firewalld
+    #     state: started
+    #     enabled: yes
+
+    # - name: Open tomcat port on the firewall
+    #   firewalld:
+    #     port: 8080/tcp
+    #     permanent: true
+    #     state: enabled
+    #     immediate: yes
+    #   # when: "ansible_os_family == 'ubuntu' and ansible_distribution_major_version == '7'"
+
+    - name: Allow all access to tcp port 8080
+      ufw:
+        rule: allow
+        port: '8080'
+        proto: tcp
+
+  handlers:
+    - name: restart tomcat
+      service:
+        name: tomcat
+        state: restarted
