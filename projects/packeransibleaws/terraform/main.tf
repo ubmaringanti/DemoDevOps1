@@ -10,7 +10,7 @@ data "aws_ami" "demo_ami" {
   most_recent = true
   filter {
     name   = "name"
-    values = ["PackerAnsible-new"]
+    values = ["PackAnsiform"]
   }
   filter {
     name   = "virtualization-type"
